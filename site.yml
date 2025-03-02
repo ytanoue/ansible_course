@@ -4,12 +4,14 @@
   pre_tasks:
 
   - name: install updates for CentOS
+    tags: always
     ansible.builtin.dnf:
       update_only: yes
       update_cache: yes
     when: ansible_distribution == "CentOS"
 
   - name: install updates for Ubuntu
+    tags: always
     ansible.builtin.apt:
       upgrade: dist
       update_cache: yes
@@ -20,13 +22,60 @@
   tasks:
 
   - name: install apache on web servers
+    tags: apache, ubuntu
     ansible.builtin.apt:
       name:
         - apache2
         - libapache2-mod-php
     when: ansible_distribution == "Ubuntu"
 
+  - name: install apache on web servers (centos)
+    tags: apache, centos
+    ansible.builtin.dnf:
+      name: httpd
+    when: ansible_distribution == "CentOS"
+
+  - name: ensure apache is running (ubuntu)
+    tags: apache,ubuntu
+    ansible.builtin.service:
+      name: apache2
+      state: started
+    when: ansible_distribution == "Ubuntu"
+
+  - name: ensure apache is running (centos)
+    tags: apache,centos
+    ansible.builtin.service:
+      name: httpd
+      state: started
+    when: ansible_distribution == "CentOS"
+
+  - name: change email address for admin
+    tags: apache,centos
+    ansible.builtin.lineinfile:
+      path: /etc/httpd/conf/httpd.conf
+      regexp: '^ServerAdmin'
+      line: ServerAdmin yukitanoue@gmail.com
+    when: ansible_distribution == "CentOS"
+    register: httpd
+
+  - name: restart httpd (centos)
+    tags: apache,centos
+    ansible.builtin.service:
+      name: httpd
+      state: restarted
+    when: httpd.changed
+
+  - name: copy html file for site
+    tags: apache,ubuntu
+    ansible.builtin.copy:
+      src: default_site.html
+      dest: /var/www/html/index.html
+      owner: root
+      group: root
+      mode: 0644
+
 - hosts: db_servers
+  tags: db, centos
   become: true
   tasks:
     - name: install mariadb package on db servers
