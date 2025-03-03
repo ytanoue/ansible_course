@@ -17,90 +17,17 @@
       update_cache: yes
     when: ansible_distribution == "Ubuntu"
 
-  - name: create user
-    tags: always
-    ansible.builtin.user:
-      name: simone
-      groups: root
+- hosts: all
+  become: true
+  roles:
+    - base
 
-  - name: add sudoers file for simone
-    tags: always
-    ansible.builtin.copy:
-      src: sudoer_simone
-      dest: /etc/sudoers.d/simone
-      owner: root
-      group: root
-      mode: 0440
-
-  - name: add ssh key for simone user
-    tags: always
-    ansible.builtin.authorized_key:
-      user: simone
-      key: "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIF8P+G5vuGY05eSOCHW67+NovdVec+JK6d159W4KWfnN ytanoue@CentOS"
+- hosts: db_servers
+  become: true
+  roles:
+    - db_servers
 
 - hosts: web_servers
   become: true
-  tasks:
-
-  - name: install apache on web servers
-    tags: apache, ubuntu
-    ansible.builtin.apt:
-      name:
-        - apache2
-        - libapache2-mod-php
-    when: ansible_distribution == "Ubuntu"
-
-  - name: install apache on web servers (centos)
-    tags: apache, centos
-    ansible.builtin.dnf:
-      name: httpd
-    when: ansible_distribution == "CentOS"
-
-  - name: ensure apache is running (ubuntu)
-    tags: apache,ubuntu
-    ansible.builtin.service:
-      name: apache2
-      state: started
-    when: ansible_distribution == "Ubuntu"
-
-  - name: ensure apache is running (centos)
-    tags: apache,centos
-    ansible.builtin.service:
-      name: httpd
-      state: started
-    when: ansible_distribution == "CentOS"
-
-  - name: change email address for admin
-    tags: apache,centos
-    ansible.builtin.lineinfile:
-      path: /etc/httpd/conf/httpd.conf
-      regexp: '^ServerAdmin'
-      line: ServerAdmin yukitanoue@gmail.com
-    when: ansible_distribution == "CentOS"
-    register: httpd
-
-  - name: restart httpd (centos)
-    tags: apache,centos
-    ansible.builtin.service:
-      name: httpd
-      state: restarted
-    when: httpd.changed
-
-  - name: copy html file for site
-    tags: apache,ubuntu
-    ansible.builtin.copy:
-      src: default_site.html
-      dest: /var/www/html/index.html
-      owner: root
-      group: root
-      mode: 0644
-
-- hosts: db_servers
-  tags: db, centos
-  become: true
-  tasks:
-    - name: install mariadb package on db servers
-      ansible.builtin.dnf:
-        name: mariadb
-        state: latest
-      when: ansible_distribution == "CentOS"
+  roles:
+    - web_servers
